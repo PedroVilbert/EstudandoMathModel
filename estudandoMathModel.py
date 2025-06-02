@@ -28,7 +28,7 @@ def mapa():
         
 
         #Função para convereter o valor numerico em estrelas para a valiação 
-        avaliacao = notas_mapa(point.aspects[6].value) 
+        avaliacao = avaliacoes(point.aspects[6].value) 
 
         #Função para converter o clima em icone
         icone = icones_clima(point.aspects[7].value)
@@ -66,35 +66,44 @@ def mapa():
                       mode='lines+markers')
     fig.show()
 
-def notas_mapa(nota):
+def avaliacoes(av):
     
         #divide a nota em 2, pois as notas estão de 0 até 10, mas as estrelas vão de 0 até 5
-        avaliacao = nota/2
+        avaliacao = av/2
         
+        #Se o resto da divisão for diferente de zero, então considera como meia estrela
+        meia_estrela = "" #Começa como vazio para caso a divisão tenha um resultado vazio
+        if av%2 != 0:
+            meia_estrela = "⯪"
+            
         #5 - o numero inteiro da avaliação será a quantidade de estrelas cinzas
-        estrala_cinza = 5 - int(avaliacao)
+        estrala_cinza = int(5 - avaliacao)
         
         if avaliacao > 0 and avaliacao < 1:#Converte a nota para 1 caso o valor esteja entre 1 e zero e depois transfora em *
             avaliacao = 1
-            avaliacao = (avaliacao * "★") + (estrala_cinza * "☆")
+            avaliacao = (avaliacao * "⯪") + (estrala_cinza * "☆")
         elif avaliacao < 0: #Valor da nota é negativo, no caso não tem nota, então atribui o simbolo '/'
             avaliacao = "\t -"
         elif avaliacao > 1: #Converte o valor da nota para o numero de '*', ex: se a nota for 2, se transforma em '**'
-            avaliacao =  (int(avaliacao) * "★") + (estrala_cinza * "☆")
+            avaliacao =  (int(avaliacao) * "★") + (meia_estrela) + (estrala_cinza * "☆")
         else:
-            avaliacao = estrala_cinza * "☆"
+            avaliacao = estrala_cinza * "☆"  
         
         return avaliacao #Retorna a avaliação
 
-def icones_clima(clima_ponto): 
-    clima = {
+
+def icones_clima(clima): 
+    #Dicionario convertendo os textos para icones
+    clima_icones = {
         "Clouds": "☁️",
         "Clear": "☀️",
         "Rain": "🌧️",
         "Snow": "❄️",
+        "Fog": "🌫️"
     }
     
-    icone = clima.get(clima_ponto)
+    #Busco o icone referente ao testo que esta em clima_ponto
+    icone = clima_icones.get(clima)
     return icone
       
         
@@ -102,5 +111,7 @@ print(data_desc.attributes) # Lista os atributos
 
 mapa()
 
-
+#Teste
+for point in traj.points:
+    print(point.aspects[7].value)
 
