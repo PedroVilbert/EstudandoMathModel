@@ -38,7 +38,10 @@ def mapa():
             "lat": point.aspects[0].x,   # Latitude (eixo X)
             "lon": point.aspects[0].y,  # Longitude (eixo Y) 
             "text": str(point.aspects[3]), # Nome da localização
+            "type": str(point.aspects[4]),  # Tipo da localização
+            "root_type": str(point.aspects[5]), # Classificação da licalização 
             "time": str(point.aspects[1]), # Horario do checkin
+            "day": str(point.aspects[2]),
             "weather": icone, #clima
             "rating": avaliacao, # Avaliações em formato de '*' ou '-' caso seja não tenha nota 
             "point": point.seq,
@@ -53,7 +56,7 @@ def mapa():
         lat="lat", # Latitude (eixo x)
         lon="lon",# Longitude (eixo y)
         hover_name= "text", # Nome da localização
-        hover_data= ["time", "weather", "rating", "point"], #data, clima, nota e ordem dos pontos do checkin
+        hover_data= ["time", "day", "type", "root_type", "weather", "rating", "point"], #data, clima, nota e ordem dos pontos do checkin
         zoom=8,  # Ajuste o zoom conforme necessário
         title="Trajetória no Mapa (FoursquareNYC)", # Titulo do mapa
         mapbox_style="open-street-map",  # Estilo do mapa (pode ser "stamen-terrain", "carto-positron", etc.)
@@ -112,6 +115,6 @@ print(data_desc.attributes) # Lista os atributos
 mapa()
 
 #Teste
-for point in traj.points:
-    print(point.aspects[7].value)
+# for point in traj.points:
+#     print(point.aspects[4].value, point.aspects[5])
 
