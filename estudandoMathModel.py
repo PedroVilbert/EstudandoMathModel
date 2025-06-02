@@ -41,7 +41,7 @@ def mapa():
             "type": str(point.aspects[4]),  # Tipo da localização
             "root_type": str(point.aspects[5]), # Classificação da licalização 
             "time": str(point.aspects[1]), # Horario do checkin
-            "day": str(point.aspects[2]),
+            "day": str(point.aspects[2]), # Dia referente ao checkin
             "weather": icone, #clima
             "rating": avaliacao, # Avaliações em formato de '*' ou '-' caso seja não tenha nota 
             "point": point.seq,
@@ -62,12 +62,20 @@ def mapa():
         mapbox_style="open-street-map",  # Estilo do mapa (pode ser "stamen-terrain", "carto-positron", etc.)
         height=700, #Tamanho do mapa
     )   
-        
+    
+    #Habilita o zoom pelo mouse
+    config = {'scrollZoom': True} 
+    
+    #faz o mapa ocupar a tela toda 
+    fig.update_layout(
+        margin={"r":0,"t":30,"l":0,"b":0},  # Remove margens
+        autosize=True)
+    
     # Conectar os pontos com linhas
     fig.update_traces(marker=dict(size=8, symbol= 'circle'),
                       line=dict(width=2, color='black'),
                       mode='lines+markers')
-    fig.show()
+    fig.show(config = config)
 
 def avaliacoes(av):
     
