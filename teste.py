@@ -5,7 +5,6 @@ import pandas as pd
 import plotly.express as px
 from dash import Dash, dcc, html, Input, Output
 
-#Teste
 # Carregando dados
 ds = 'mat.FoursquareNYC'
 df = load_ds(ds, sample_size=0.25)
@@ -118,7 +117,6 @@ app.layout = html.Div([
     html.Button('Preencher   Todas', id='preencher-todos-button', n_clicks=0), #Botão para preencher todas as opções
     dcc.Graph(id='mapa', style={'height': '700px'}), 
 ])
-
 
 
 # CALLBACK 1 – Atualizar mapa com base no checklist
