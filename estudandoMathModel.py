@@ -19,7 +19,6 @@ traj = T[0] #T[1] é uma pessoa especifica, caso mude o valor, muda a pessoa
     
 """
 
-
 def icone_avaliacao(av):
     
     #divide a nota em 2, pois as notas estão de 0 até 10, mas as estrelas vão de 0 até 5
@@ -116,7 +115,7 @@ app.layout = html.Div([
     
     html.Button('Remover Todas', id='remover-button', n_clicks=1), #Botão para remover todas as opções 
     html.Button('Preencher   Todas', id='preencher-todos-button', n_clicks=0), #Botão para preencher todas as opções
-    dcc.Graph(id='mapa', style={'height': '700px'}), 
+    dcc.Graph(id='mapa', style={'height': '700px'}, config={'scrollZoom': True}), 
 ])
 
 
@@ -156,6 +155,8 @@ def update_map(colunas_selecionadas):
     #faz o mapa ocupar a tela toda 
     fig.update_layout(margin={"r":0,"t":30,"l":0,"b":0}, autosize=True)
     
+
+    
     return fig
 
 # callback 2 atualizar a seleção de opções para aperecer no mapa
@@ -172,8 +173,6 @@ def atualizar_checklist(n_clicks1, n_clicks2):
         elif botao_clicado == "preencher-todos-button":# Vai retornar a lista de seleção complelta
             return ['lat', 'lon', 'Nome Local', 'Classificação', 'Horário', 'Clima', 'Avaliação', 'Tipo', 'Dia', 'Ponto']       
     return []
-        
-
 
 if __name__ == "__main__":
     app.run(debug=True)
