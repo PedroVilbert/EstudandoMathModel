@@ -1,10 +1,9 @@
 import dash  # Importa a biblioteca Dash para criação da aplicação web interativa
 from matdata.dataset import *  # Importa funções para carregar datasets do pacote matdata
 from matmodel.util.parsers import df2trajectory  # Importa função para converter DataFrame em trajetórias
-import pandas as pd  # Importa pandas para manipulação de dados em DataFrame
 import plotly.graph_objects as go  # Importa plotly.graph_objects para gráficos customizados
 from dash import Dash, dcc, html, Input, Output  # Importa componentes do Dash para construir layout e callbacks
-import plotly.express as px  # Importa plotly express para gráficos rápidos (não usado aqui)
+
 
 # Carregando dados
 ds = 'mat.FoursquareNYC'  # Define o nome do dataset a ser carregado
@@ -16,7 +15,7 @@ T, data_desc = df2trajectory(df)  # Converte DataFrame em múltiplas trajetória
 #     print(f"Trajetória {i+1} contém {len(T[i].points)} pontos")
 
 # Definição de funções auxiliares
-def icone_avaliacao(av):  # Função para converter valor numérico de avaliação em estrelas unicode
+def icone_avaliacao(av):  # Função para converter valor numérico de avaliação em estrelas
     avaliacao = av / 2  # Divide avaliação por 2 para escalar de 0 a 5
     meia_estrela = "⯪" if (avaliacao - int(avaliacao)) >= 0.5 else "☆"  # Decide se meia estrela deve aparecer
     estrela_cinza = int(5 - avaliacao)  # Quantidade de estrelas cinzas para completar até 5
@@ -101,6 +100,7 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
     all_lats = []  # Lista para armazenar todas latitudes dos pontos para centralizar mapa
     all_lons = []  # Lista para armazenar todas longitudes
 
+
     for i, traj in enumerate(T[:5]):  # Para as primeiras 5 trajetórias
         lats = [p.aspects[0].x for p in traj.points]  # Lista de latitudes da trajetória i
         lons = [p.aspects[0].y for p in traj.points]  # Lista de longitudes da trajetória i
@@ -173,3 +173,4 @@ def atualizar_checklist(n_clicks1, n_clicks2):  # Função que atualiza checklis
 
 if __name__ == '__main__':  # Só executa quando rodar o script diretamente
     app.run(debug=True)  # Roda o servidor do Dash em modo debug para desenvolvimento
+
