@@ -3,12 +3,104 @@ from matdata.dataset import *  # Importa funções para carregar datasets do pac
 from matmodel.util.parsers import df2trajectory  # Importa função para converter DataFrame em trajetórias
 import plotly.graph_objects as go  # Importa plotly.graph_objects para gráficos customizados
 from dash import Dash, dcc, html, Input, Output  # Importa componentes do Dash para construir layout e callbacks
+from matdata.dataset import load_ds
+from matdata.converter import df2csv
+from matdata.preprocess import klabels_stratify
+from matmodel.util.parsers import json2movelet
+import json
+import pandas as pd
+import os
 
-
-# Carregando dados
+# Carregando dados das trajetorias
 ds = 'mat.FoursquareNYC'  # Define o nome do dataset a ser carregado
 df = load_ds(ds, sample_size=0.25)  # Carrega uma amostra de 25% do dataset
 T, data_desc = df2trajectory(df)  # Converte DataFrame em múltiplas trajetórias (lista T)
+
+
+
+# Carregando dados das movelets----------------------------------------------------------------------------------
+dataset='mat.FoursquareNYC'
+
+data = load_ds(dataset, missing='-999')
+print(data)
+#-------------------------------------------------------------------
+train, test = klabels_stratify(data, kl=10)
+
+print("Classes:", train.label.unique())
+
+print("Trajs. Treino:", len(train.tid.unique()) )
+print("Trajs. Teste :", len(test.tid.unique()) )
+
+
+#-------------------------------------------------------------------
+data_path = 'sample/data/FoursquareNYC'
+if not os.path.exists(data_path):
+    os.makedirs(data_path)
+
+df2csv(train, data_path, 'train')
+df2csv(test, data_path, 'test')
+
+
+#--------------------------------------------------------------------
+prog_path = 'sample/programs'
+if not os.path.exists(prog_path):
+    print(os.makedirs(prog_path))
+
+# Criar pastas se não existirem
+os.makedirs("sample/programs", exist_ok=True)
+os.makedirs("sample/data/FoursquareNYC", exist_ok=True)
+
+# Baixar o JAR
+url_jar = "https://raw.githubusercontent.com/mat-analysis/mat-tools/main/jarfiles/MoveletDiscovery.jar"
+jar_path = "sample/programs/MoveletDiscovery.jar"
+r = requests.get(url_jar)
+with open(jar_path, "wb") as f:
+    f.write(r.content)
+print("MoveletDiscovery.jar baixado!")
+
+# Baixar o JSON
+url_json = "https://raw.githubusercontent.com/mat-analysis/datasets/main/mat/FoursquareNYC/FoursquareNYC.json"
+json_path = "sample/data/FoursquareNYC/FoursquareNYC.json"
+r = requests.get(url_json)
+with open(json_path, "wb") as f:
+    f.write(r.content)
+print("FoursquareNYC.json baixado!")
+    
+#--------------------------------------------------------------------
+
+import subprocess
+
+cmd = [
+    "java", "-Xmx7G", "-jar", "./sample/programs/MoveletDiscovery.jar",
+    "-curpath", "./sample/data/FoursquareNYC",
+    "-respath", "./sample/results/hiper",
+    "-descfile", "./sample/data/FoursquareNYC/FoursquareNYC.json",
+    "-nt", "1", "-version", "hiper", "-ms", "-1", "-Ms", "-3", "-TC", "1d"
+]
+
+subprocess.run(cmd, check=True)
+
+#--------------------------------------------------------------------
+
+
+movelets_train = pd.read_csv('./sample/data/FoursquareNYC/train.csv')
+movelets_test = pd.read_csv('./sample/data/FoursquareNYC/test.csv')
+
+#--------------------------------------------------------------------
+
+T, data_desc = df2trajectory(data, data_desc='sample/data/FoursquareNYC/FoursquareNYC.json')
+
+#--------------------------------------------------------------------
+# Lendo movelets como objetos de mat-model
+
+mov_file = './sample/results/hiper/Movelets/HIPER_Log_FoursquareNYC_LSP_ED/164/moveletsOnTrain.json'
+
+with open(mov_file, 'r') as f:
+    M = json2movelet(f)
+    
+    
+    
+
 
 # print("Total de trajetórias:", len(T))  # Código comentado para imprimir o total de trajetórias
 # for i in range(5):  # Código comentado para mostrar número de pontos nas primeiras 5 trajetórias
