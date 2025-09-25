@@ -100,7 +100,14 @@ with open(mov_file, 'r') as f:
     
     
     
-
+# Cria dicionário de trajetórias com movelets
+traj_movelets = {}
+for mov in M:  # M é a lista de movelets extraídas pelo json2movelet
+    tid = mov.tid  # ID da trajetória da qual movelet foi extraída
+    if tid not in traj_movelets:
+        traj_movelets[tid] = []
+    traj_movelets[tid].append(mov)
+print("Dicionario criado!")
 
 # print("Total de trajetórias:", len(T))  # Código comentado para imprimir o total de trajetórias
 # for i in range(5):  # Código comentado para mostrar número de pontos nas primeiras 5 trajetórias
@@ -180,73 +187,86 @@ def extrair_valor(coluna, p):  # Função que retorna o valor de uma coluna para
     }
     return idx[coluna](p) if coluna in idx else ''  # Retorna valor da coluna ou string vazia se coluna não existir
 
-# CALLBACK 1 – Atualiza o mapa com multiplas trajetorias
+# CALLBACK 1 – Atualiza o mapa com múltiplas trajetórias
 @app.callback(
     Output('mapa', 'figure'),  # Saída do callback atualiza a figura do gráfico do mapa
     Input('filtros-hover', 'value')  # Entrada é a lista das colunas selecionadas no checklist
 )
 def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base nas colunas selecionadas
     fig = go.Figure()  # Cria uma nova figura plotly
-    cores = ['red', 'blue', 'green', 'orange', 'purple']  # Lista de cores para diferenciar trajetórias
+    cores = ['blue', 'green', 'orange', 'purple', 'brown']  # Lista de cores para trajetórias
 
     all_lats = []  # Lista para armazenar todas latitudes dos pontos para centralizar mapa
     all_lons = []  # Lista para armazenar todas longitudes
 
-
-    for i, traj in enumerate(T[:5]):  # Para as primeiras 5 trajetórias
+    for i, traj in enumerate(T[:40]):  # Testando traj. desse intervalo para encontrar movelets
         lats = [p.aspects[0].x for p in traj.points]  # Lista de latitudes da trajetória i
         lons = [p.aspects[0].y for p in traj.points]  # Lista de longitudes da trajetória i
         all_lats.extend(lats)  # Adiciona latitudes à lista geral
         all_lons.extend(lons)  # Adiciona longitudes à lista geral
 
+        print("O tid da trajetoria é: ", traj.tid)
+        # Verifica se a trajetória possui algum movelet
+        tem_movelet = traj.tid in traj_movelets
+        print(tem_movelet, "-------------------------------------------------------------------------------------")
+        # Cor normal da trajetória (não muda mais)
+        cor_traj = cores[i % len(cores)]
+
         hover_texts = []  # Lista que conterá o texto do tooltip para cada ponto
         for j, p in enumerate(traj.points):  # Para cada ponto na trajetória
-            titulo = f"{p.aspects[3].value}"  # Título do tooltip é o nome do local (aspecto 3)
+            titulo = f"{p.aspects[3].value}"  # Nome do local (aspecto 3)
             partes = [f"{c}: {extrair_valor(c, p)}" for c in colunas_selecionadas]  # Monta linhas com colunas selecionadas
-            hover_texts.append("<br>".join([titulo] + partes))  # Junta título e linhas em texto HTML com quebras
 
-        fig.add_trace(go.Scattermapbox(  # Adiciona linha da trajetória no mapa
-            mode='lines',  # Modo linha
-            lon=lons,  # Coordenadas longitude
-            lat=lats,  # Coordenadas latitude
-            line={'width': 2, 'color': cores[i % len(cores)]},  # Cor e espessura da linha
-            name=f'Trajetória {i+1}',  # Nome da linha na legenda
-            legendgroup=f"traj{i}",  # Grupo da legenda para sincronizar linhas e pontos
-            showlegend=True  # Exibir legenda
+            # Se a trajetória tem movelet, deixa TODO o texto em negrito
+            if tem_movelet:
+                texto = "<b>" + "<br>".join([titulo] + partes + ["🚩 MOVELET"]) + "</b>"
+            else:
+                texto = "<br>".join([titulo] + partes)
+
+            hover_texts.append(texto)
+
+        # Linha da trajetória
+        fig.add_trace(go.Scattermapbox(
+            mode='lines',
+            lon=lons,
+            lat=lats,
+            line={'width': 2, 'color': cor_traj},  # Sempre cor normal
+            name=f'Trajetória {i+1}',
+            legendgroup=f"traj{i}",
+            showlegend=True
         ))
 
-        fig.add_trace(go.Scattermapbox(  # Adiciona pontos da trajetória no mapa
-            mode='markers',  # Modo marcador (pontos)
-            lon=lons,  # Coordenadas longitude
-            lat=lats,  # Coordenadas latitude
-            marker={'size': 8, 'color': cores[i % len(cores)]},  # Tamanho e cor dos pontos
-            name=f'Pontos T{i+1}',  # Nome dos pontos na legenda
-            customdata=[[text] for text in hover_texts],  # Texto customizado para tooltips (lista de listas)
-            hovertemplate="%{customdata[0]}<extra></extra>",  # Template do tooltip para mostrar o texto customizado
-            legendgroup=f"traj{i}",  # Grupo da legenda para sincronizar linhas e pontos
-            showlegend=False  # Não mostrar legenda para pontos (só para linhas)
+        # Pontos da trajetória
+        fig.add_trace(go.Scattermapbox(
+            mode='markers',
+            lon=lons,
+            lat=lats,
+            marker={'size': 8, 'color': cor_traj},  # Sempre cor normal
+            name=f'Pontos T{i+1}',
+            customdata=[[text] for text in hover_texts],  # Tooltip customizado
+            hovertemplate="%{customdata[0]}<extra></extra>",
+            legendgroup=f"traj{i}",
+            showlegend=False
         ))
 
-    # Corrige o centro do mapa com base em todos os pontos
-    if all_lats and all_lons:  # Se houver pontos
-        center_lat = sum(all_lats) / len(all_lats)  # Calcula média das latitudes para centralizar
-        center_lon = sum(all_lons) / len(all_lons)  # Calcula média das longitudes para centralizar
+    # Centraliza o mapa
+    if all_lats and all_lons:
+        center_lat = sum(all_lats) / len(all_lats)
+        center_lon = sum(all_lons) / len(all_lons)
     else:
-        center_lat = 0  # Padrão para latitude central
-        center_lon = 0  # Padrão para longitude central
+        center_lat, center_lon = 0, 0
 
-    fig.update_layout(  # Atualiza layout do mapa
-        mapbox_style="open-street-map",  # Estilo do mapa
-        mapbox_zoom=11,  # Zoom inicial do mapa
-        mapbox_center={"lat": center_lat, "lon": center_lon},  # Centraliza o mapa
-        margin={"r": 0, "t": 30, "l": 0, "b": 0},  # Margens ao redor do gráfico
-        height=700,  # Altura do gráfico
-        title="Múltiplas Trajetórias no Mapa",  # Título do gráfico
-        showlegend=True  # Mostrar legenda
+    fig.update_layout(
+        mapbox_style="open-street-map",
+        mapbox_zoom=11,
+        mapbox_center={"lat": center_lat, "lon": center_lon},
+        margin={"r": 0, "t": 30, "l": 0, "b": 0},
+        height=700,
+        title="Múltiplas Trajetórias no Mapa",
+        showlegend=True
     )
 
-    return fig  # Retorna figura para ser renderizada no componente dcc.Graph
-
+    return fig
 
 # CALLBACK 2 – Atualiza checklist
 @app.callback(
