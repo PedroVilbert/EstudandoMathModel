@@ -10,29 +10,18 @@ from matmodel.util.parsers import json2movelet
 import json
 import pandas as pd
 import os
+import subprocess
 
 # Carregando dados das trajetorias
 ds = 'mat.FoursquareNYC'  # Define o nome do dataset a ser carregado
 df = load_ds(ds, sample_size=0.25)  # Carrega uma amostra de 25% do dataset
 T, data_desc = df2trajectory(df)  # Converte DataFrame em múltiplas trajetórias (lista T)
 
-
-
-# Carregando dados das movelets----------------------------------------------------------------------------------
+# Carrega dados para as movelets
 dataset='mat.FoursquareNYC'
-
 data = load_ds(dataset, missing='-999')
-print(data)
-#-------------------------------------------------------------------
 train, test = klabels_stratify(data, kl=10)
 
-print("Classes:", train.label.unique())
-
-print("Trajs. Treino:", len(train.tid.unique()) )
-print("Trajs. Teste :", len(test.tid.unique()) )
-
-
-#-------------------------------------------------------------------
 data_path = 'sample/data/FoursquareNYC'
 if not os.path.exists(data_path):
     os.makedirs(data_path)
@@ -40,8 +29,6 @@ if not os.path.exists(data_path):
 df2csv(train, data_path, 'train')
 df2csv(test, data_path, 'test')
 
-
-#--------------------------------------------------------------------
 prog_path = 'sample/programs'
 if not os.path.exists(prog_path):
     print(os.makedirs(prog_path))
@@ -49,27 +36,7 @@ if not os.path.exists(prog_path):
 # Criar pastas se não existirem
 os.makedirs("sample/programs", exist_ok=True)
 os.makedirs("sample/data/FoursquareNYC", exist_ok=True)
-
-# Baixar o JAR
-url_jar = "https://raw.githubusercontent.com/mat-analysis/mat-tools/main/jarfiles/MoveletDiscovery.jar"
-jar_path = "sample/programs/MoveletDiscovery.jar"
-r = requests.get(url_jar)
-with open(jar_path, "wb") as f:
-    f.write(r.content)
-print("MoveletDiscovery.jar baixado!")
-
-# Baixar o JSON
-url_json = "https://raw.githubusercontent.com/mat-analysis/datasets/main/mat/FoursquareNYC/FoursquareNYC.json"
-json_path = "sample/data/FoursquareNYC/FoursquareNYC.json"
-r = requests.get(url_json)
-with open(json_path, "wb") as f:
-    f.write(r.content)
-print("FoursquareNYC.json baixado!")
     
-#--------------------------------------------------------------------
-
-import subprocess
-
 cmd = [
     "java", "-Xmx7G", "-jar", "./sample/programs/MoveletDiscovery.jar",
     "-curpath", "./sample/data/FoursquareNYC",
@@ -79,41 +46,63 @@ cmd = [
 ]
 
 subprocess.run(cmd, check=True)
-
-#--------------------------------------------------------------------
-
-
 movelets_train = pd.read_csv('./sample/data/FoursquareNYC/train.csv')
 movelets_test = pd.read_csv('./sample/data/FoursquareNYC/test.csv')
 
-#--------------------------------------------------------------------
-
 T, data_desc = df2trajectory(data, data_desc='sample/data/FoursquareNYC/FoursquareNYC.json')
 
-#--------------------------------------------------------------------
 # Lendo movelets como objetos de mat-model
-
 mov_file = './sample/results/hiper/Movelets/HIPER_Log_FoursquareNYC_LSP_ED/164/moveletsOnTrain.json'
 
 with open(mov_file, 'r') as f:
     M = json2movelet(f)
-    
-    
-    
+       
 # Cria dicionário de trajetórias com movelets
 traj_movelets = {}
 for mov in M:  # M é a lista de movelets extraídas pelo json2movelet
     tid = mov.tid  # ID da trajetória da qual movelet foi extraída
-    if tid not in traj_movelets:
+    if tid not in traj_movelets.keys():
         traj_movelets[tid] = []
     traj_movelets[tid].append(mov)
 print("Dicionario criado!")
 
-# print("Total de trajetórias:", len(T))  # Código comentado para imprimir o total de trajetórias
-# for i in range(5):  # Código comentado para mostrar número de pontos nas primeiras 5 trajetórias
-#     print(f"Trajetória {i+1} contém {len(T[i].points)} pontos")
 
+#-----------------------------------
+# Inicia app
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css'] #Estilo para o botão
+app = Dash(__name__, external_stylesheets=external_stylesheets)  # Instancia aplicação Dash
+
+# Layout
+app.layout = html.Div([  # Define layout principal como uma Div
+    
+    dcc.Checklist(  # Checklist para seleção das colunas a mostrar no tooltip
+        id='filtros-hover',  # Id do componente para callbacks
+        options=[  # Opções que aparecem como checkboxes
+            {'label': 'Latitute', 'value': 'lat'},  # Latitude
+            {'label': 'Longitude','value': 'lon'},  # Longitude
+            {'label': 'Nome Local', 'value': 'Nome Local'},  # Nome do local
+            {'label': 'Classificação', 'value': 'Classificacao'},  # Classificação do local
+            {'label': 'Horário', 'value': 'Horario'},  # Horário do check-in
+            {'label': 'Clima', 'value': 'Clima'},  # Clima no check-in
+            {'label': 'Avaliação', 'value': 'Avaliacao'},  # Avaliação do local
+            {'label': 'Tipo', 'value': 'Tipo'},  # Tipo do local
+            {'label': 'Dia', 'value': 'Dia'},  # Dia do check-in
+            {'label': 'Ponto', 'value': 'Ponto'},  # Número sequencial do ponto
+        ],
+        value=['Avaliacao', 'Clima'],  # Opções pré-selecionadas no checklist
+        inline=True,  # Mostra as opções em linha
+    ),
+    html.Button('Remover Todas', id='remover-button', n_clicks=0),  # Botão para desmarcar todas opções (inicia clicado)
+    html.Button('Preencher Todas', id='preencher-todos-button', n_clicks=0),  # Botão para marcar todas opções
+    dcc.Upload(html.Button('Upload File')), #Botão de upload
+    dcc.Graph(id='mapa', style={'height': '700px'}, config={'scrollZoom': True}), # Componente gráfico para mostrar o mapa
+])
+
+
+
+#-------------------------------------------------------------------------
 # Definição de funções auxiliares
+
 def icone_avaliacao(av):  # Função para converter valor numérico de avaliação em estrelas
     avaliacao = av / 2  # Divide avaliação por 2 para escalar de 0 a 5
     meia_estrela = "⯪" if (avaliacao - int(avaliacao)) >= 0.5 else "☆"  # Decide se meia estrela deve aparecer
@@ -137,32 +126,6 @@ def icones_clima(clima):  # Função para converter string clima em emoji corres
     }
     return clima_icones.get(clima, '-')  # Retorna emoji ou '-' se não encontrado
 
-# Inicia app
-app = Dash(__name__)  # Instancia aplicação Dash
-
-# Layout
-app.layout = html.Div([  # Define layout principal como uma Div
-    dcc.Checklist(  # Checklist para seleção das colunas a mostrar no tooltip
-        id='filtros-hover',  # Id do componente para callbacks
-        options=[  # Opções que aparecem como checkboxes
-            {'label': 'Latitute', 'value': 'lat'},  # Latitude
-            {'label': 'Longitude','value': 'lon'},  # Longitude
-            {'label': 'Nome Local', 'value': 'Nome Local'},  # Nome do local
-            {'label': 'Classificação', 'value': 'Classificacao'},  # Classificação do local
-            {'label': 'Horário', 'value': 'Horario'},  # Horário do check-in
-            {'label': 'Clima', 'value': 'Clima'},  # Clima no check-in
-            {'label': 'Avaliação', 'value': 'Avaliacao'},  # Avaliação do local
-            {'label': 'Tipo', 'value': 'Tipo'},  # Tipo do local
-            {'label': 'Dia', 'value': 'Dia'},  # Dia do check-in
-            {'label': 'Ponto', 'value': 'Ponto'},  # Número sequencial do ponto
-        ],
-        value=['Avaliacao', 'Clima'],  # Opções pré-selecionadas no checklist
-        inline=True,  # Mostra as opções em linha
-    ),
-    html.Button('Remover Todas', id='remover-button', n_clicks=0),  # Botão para desmarcar todas opções (inicia clicado)
-    html.Button('Preencher Todas', id='preencher-todos-button', n_clicks=1),  # Botão para marcar todas opções
-    dcc.Graph(id='mapa', style={'height': '700px'}, config={'scrollZoom': True})  # Componente gráfico para mostrar o mapa
-])
 
 def extrair_valor(coluna, p):  # Função que retorna o valor de uma coluna para um ponto p da trajetória
     
@@ -205,10 +168,10 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
         all_lats.extend(lats)  # Adiciona latitudes à lista geral
         all_lons.extend(lons)  # Adiciona longitudes à lista geral
 
-        print("O tid da trajetoria é: ", traj.tid)
+
         # Verifica se a trajetória possui algum movelet
-        tem_movelet = traj.tid in traj_movelets
-        print(tem_movelet, "-------------------------------------------------------------------------------------")
+        tem_movelet = traj.tid in traj_movelets.keys()
+
         # Cor normal da trajetória (não muda mais)
         cor_traj = cores[i % len(cores)]
 
@@ -220,6 +183,7 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
             # Se a trajetória tem movelet, deixa TODO o texto em negrito
             if tem_movelet:
                 texto = "<b>" + "<br>".join([titulo] + partes + ["🚩 MOVELET"]) + "</b>"
+                print("🚩 MOVELET")
             else:
                 texto = "<br>".join([titulo] + partes)
 
