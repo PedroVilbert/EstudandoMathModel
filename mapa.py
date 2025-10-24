@@ -123,7 +123,7 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
     all_lats = []  # Lista para armazenar todas latitudes dos pontos para centralizar mapa
     all_lons = []  # Lista para armazenar todas longitudes
 
-    for i, traj in enumerate(T[:40]):  # Testando traj. desse intervalo para encontrar movelets
+    for i, traj in enumerate(T[:5]):  # Testando traj. desse intervalo para encontrar movelets
         lats = [p.aspects[0].x for p in traj.points]  # Lista de latitudes da trajetória i
         lons = [p.aspects[0].y for p in traj.points]  # Lista de longitudes da trajetória i
         all_lats.extend(lats)  # Adiciona latitudes à lista geral

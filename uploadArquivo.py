@@ -14,6 +14,20 @@ from flask import Flask, session
 import threading
 import uuid
 
+SESS_USERS = {}
+
+class SessionUser:
+    def __init__(self):
+        self.data = {}
+
+    def gev(self, key, default=None):
+        return self.data.get(key, default)
+
+    def sev(self, key, value):
+        self.data[key] = value
+
+# Garante que o usuário padrão exista
+SESS_USERS["default_user"] = SessionUser()
 
 def parse_contents(contents, filename, date):
     content_type, content_string = contents.split(',')
@@ -52,9 +66,18 @@ def parse_contents(contents, filename, date):
             df, columns_order_zip, columns_order_csv = organizeFrame(df)
             update_trajectories(df[columns_order_csv])
         elif ext == 'json':
-            update_movelets(io.BytesIO(decoded))
+            
+            #sem esse try ele não funciona, vai dar erro na leitura de arquivo .parquet
+            try:
+                df = pd.read_json(io.BytesIO(decoded))
+                df, columns_order_zip, columns_order_csv = organizeFrame(df)
+                update_trajectories(df[columns_order_csv])
+            except Exception as e:
+                print("Erro ao ler JSON:", e)
+                return dbc.Alert("Erro ao processar arquivo JSON (esperado dataset de trajetórias).", color="danger", style={'margin':'1rem'})
         else:
             return dbc.Alert("This file format is not accepted.", color="warning", style = {'margin':'1rem'})
+    
     except Exception as e:
         raise e
         print(e)
