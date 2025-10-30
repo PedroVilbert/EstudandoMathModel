@@ -1,6 +1,5 @@
 # Definição de funções auxiliares
 
-
 def icone_avaliacao(av):  # Função para converter valor numérico de avaliação em estrelas
     avaliacao = av / 2  # Divide avaliação por 2 para escalar de 0 a 5
     meia_estrela = "⯪" if (avaliacao - int(avaliacao)) >= 0.5 else "☆"  # Decide se meia estrela deve aparecer
