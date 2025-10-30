@@ -97,13 +97,13 @@ app.layout = html.Div([  # Define layout principal como uma Div
     html.Button('Remover Todas', id='remover-button', n_clicks=0),  # Botão para desmarcar todas opções (inicia clicado)
     html.Button('Preencher Todas', id='preencher-todos-button', n_clicks=0),  # Botão para marcar todas opções
     
-#     dcc.Upload(
-#     id='upload-data',
-#     children=html.Button('Upload File'),
-#     multiple=False
-#     ),
-#     html.Div(id='upload-output'),  # Aqui aparecerá o resultado (mensagem de sucesso/erro)
-#  #Botão de upload
+    dcc.Upload(
+    id='upload-data',
+    children=html.Button('Upload File'),
+    multiple=False
+    ),
+    html.Div(id='upload-output'),  # Aqui aparecerá o resultado (mensagem de sucesso/erro)
+ #Botão de upload
  
     dcc.Graph(id='mapa', style={'height': '700px'}, config={'scrollZoom': True}), # Componente gráfico para mostrar o mapa
 ])
@@ -210,18 +210,18 @@ def atualizar_checklist(n_clicks1, n_clicks2):  # Função que atualiza checklis
 
 
 
-# @app.callback(
-#     Output('upload-output', 'children'),
-#     Input('upload-data', 'contents'),
-#     Input('upload-data', 'filename'),
-#     Input('upload-data', 'last_modified')
-# )
-# def process_uploaded_file(contents, filename, date):
-#     if contents is not None:
-#         # Chama a função parse_contents() do seu módulo uploadArquivo.py
-#         return upa.parse_contents(contents, filename, date)
-#     else:
-#         return ''
+@app.callback(
+    Output('upload-output', 'children'),
+    Input('upload-data', 'contents'),
+    Input('upload-data', 'filename'),
+    Input('upload-data', 'last_modified')
+)
+def process_uploaded_file(contents, filename, date):
+    if contents is not None:
+        # Chama a função parse_contents() do seu módulo uploadArquivo.py
+        return upa.parse_contents(contents, filename, date)
+    else:
+        return ''
     
 if __name__ == '__main__':  # Só executa quando rodar o script diretamente
     app.run(debug=True)  # Roda o servidor do Dash em modo debug para desenvolvimento
