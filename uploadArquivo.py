@@ -6,9 +6,6 @@ from matdata.inc.ts_io import load_from_tsfile
 import io
 from matdata.preprocess import readDataset, organizeFrame
 
-
-
-
 def parse_contents(contents, filename, date):
     content_type, content_string = contents.split(',')
 
@@ -48,15 +45,10 @@ def parse_contents(contents, filename, date):
 
             df, columns_order_zip, columns_order_csv = organizeFrame(df)
             return df
-        elif ext == 'json':
-            
-            #sem esse try ele não funciona, vai dar erro na leitura de arquivo .parquet
-            try:
+        elif ext == 'json':        
                 df = pd.read_json(io.BytesIO(decoded))
                 df, columns_order_zip, columns_order_csv = organizeFrame(df)
                 return df
-            except Exception as e:
-                print("Erro ao ler JSON:", e)
                 
     except Exception as e:
         print(e)

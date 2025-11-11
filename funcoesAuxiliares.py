@@ -2,7 +2,16 @@
 
 def icone_avaliacao(av):  # Função para converter valor numérico de avaliação em estrelas
     avaliacao = av / 2  # Divide avaliação por 2 para escalar de 0 a 5
-    meia_estrela = "⯪" if (avaliacao - int(avaliacao)) >= 0.5 else "☆"  # Decide se meia estrela deve aparecer
+    
+    # Decide se meia estrela deve aparecer 
+    if avaliacao - int(avaliacao)>= 0.5:
+        meia_estrela = "⯪"
+    elif avaliacao - int(avaliacao) == 0: 
+        meia_estrela = ""
+    else:
+       meia_estrela = "☆" 
+    
+    
     estrela_cinza = int(5 - avaliacao)  # Quantidade de estrelas cinzas para completar até 5
 
     if avaliacao >= 1:  # Se avaliação >= 1, monta string com estrelas cheias, meia e cinzas
