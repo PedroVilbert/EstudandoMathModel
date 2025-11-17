@@ -1,6 +1,7 @@
 import dash  # Importa a biblioteca Dash para criação da aplicação web interativa
 import plotly.graph_objects as go  # Importa plotly.graph_objects para gráficos customizados
-from dash import Dash, dcc, html, Input, Output  # Importa componentes do Dash para construir layout e callbacks
+from dash import Dash, dcc, html, Input, Output, State  # Importa componentes do Dash para construir layout e callbacks
+import os
 
 #bibliotecas mat
 from matdata.dataset import *  # Importa funções para carregar datasets do pacote matdata
@@ -12,6 +13,9 @@ import funcoesAuxiliares as fca #Funções auxiliares para o mapa
 import uploadArquivo as upa #Funções para o upload de arquivos
 import movelets as mov #Movelets
 
+os.system('cls')
+# import inspect
+# print(inspect.getsource(df2trajectory))
 
 # Carregando dados das trajetorias
 ds = 'mat.FoursquareNYC'  # Define o nome do dataset a ser carregado
@@ -50,9 +54,10 @@ app.layout = html.Div([  # Define layout principal como uma Div
     id='upload-data',
     children=html.Button('Upload File'),
     multiple=False
-    ),
+    ), #Botão de upload
     html.Div(id='upload-output'),  # Aqui aparecerá o resultado (mensagem de sucesso/erro)
- #Botão de upload
+    dcc.Store(id='store-data', storage_type='memory'),
+
  
     dcc.Graph(id='mapa', style={'height': '700px'}, config={'scrollZoom': True}), # Componente gráfico para mostrar o mapa
 ])
@@ -62,10 +67,26 @@ app.layout = html.Div([  # Define layout principal como uma Div
 #-------------------------------------------------------------------------
 # CALLBACK 1 – Atualiza o mapa com múltiplas trajetórias
 @app.callback(
-    Output('mapa', 'figure'),  # Saída do callback atualiza a figura do gráfico do mapa
-    Input('filtros-hover', 'value')  # Entrada é a lista das colunas selecionadas no checklist
+    Output('mapa', 'figure'),
+    Input('filtros-hover', 'value'),
+    Input('store-data', 'data')  # Novo input
 )
-def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base nas colunas selecionadas
+def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa com base nas colunas selecionadas
+    
+    global T  # Permite substituir as trajetórias globais
+    
+    # Se houver novos dados carregados, converte de volta para DataFrame e trajetórias
+    if json_data is not None:
+        df = pd.read_json(json_data, orient='split')
+        df = pd.read_json(json_data, orient='split')
+
+        T, data_desc = df2trajectory(
+            df,
+            data_desc=None,               # evita leitura de arquivo
+            tid_col='tid',                # ajuste para o nome da sua coluna
+            label_col='label'             # ajuste para sua coluna
+        )
+    
     fig = go.Figure()  # Cria uma nova figura plotly
     cores = ['blue', 'green', 'orange', 'purple', 'brown']  # Lista de cores para trajetórias
 
@@ -90,7 +111,7 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
             titulo = f"{p.aspects[3].value}"  # Nome do local (aspecto 3)
             partes = [f"{c}: {fca.extrair_valor(c, p)}" for c in colunas_selecionadas]  # Monta linhas com colunas selecionadas
 
-            # Se a trajetória tem movelet, deixa TODO o texto em negrito
+            # Se a trajetória tem movelet, deixa todo o texto em negrito
             if tem_movelet:
                 texto = "<b>" + "<br>".join([titulo] + partes + ["🚩 MOVELET"]) + "</b>"
                 print("🚩 MOVELET")
@@ -100,7 +121,7 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
             hover_texts.append(texto)
 
         # Linha da trajetória
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             mode='lines',
             lon=lons,
             lat=lats,
@@ -111,7 +132,7 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
         ))
 
         # Pontos da trajetória
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             mode='markers',
             lon=lons,
             lat=lats,
@@ -131,9 +152,9 @@ def update_map(colunas_selecionadas):  # Função que atualiza o mapa com base n
         center_lat, center_lon = 0, 0
 
     fig.update_layout(
-        mapbox_style="open-street-map",
-        mapbox_zoom=11,
-        mapbox_center={"lat": center_lat, "lon": center_lon},
+        map_style="open-street-map",
+        map_zoom=11,
+        map_center={"lat": center_lat, "lon": center_lon},
         margin={"r": 0, "t": 30, "l": 0, "b": 0},
         height=700,
         title="Múltiplas Trajetórias no Mapa",
@@ -160,17 +181,37 @@ def atualizar_checklist(n_clicks1, n_clicks2):  # Função que atualiza checklis
 
 
 @app.callback(
-    Output('upload-output', 'children'),
+    Output('store-data', 'data'),  # Salva o DataFrame no Store
+    Output('upload-output', 'children'),  # Mostra mensagem
     Input('upload-data', 'contents'),
-    Input('upload-data', 'filename'),
-    Input('upload-data', 'last_modified')
+    State('upload-data', 'filename'),
+    State('upload-data', 'last_modified'),
+    prevent_initial_call=True
 )
 def process_uploaded_file(contents, filename, date):
     if contents is not None:
-        # Chama a função parse_contents() do seu módulo uploadArquivo.py
-        return upa.parse_contents(contents, filename, date)
-    else:
-        return ''
+        df = upa.parse_contents(contents, filename, date)
+
+        if isinstance(df, pd.DataFrame):
+
+            #CONVERSÕES AQUI DENTRO!!!
+            # Converte colunas com caracteres estranhos
+            df['day'] = df['day'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s]', '', regex=True).str.strip()
+            df['poi'] = df['poi'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True).str.strip()
+            df['type'] = df['type'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True).str.strip()
+            df['root_type'] = df['root_type'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True).str.strip()
+            df['weather'] = df['weather'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s]', '', regex=True).str.strip()
+
+            # Normaliza linhas vazias
+            df = df.replace({"": None, "nan": None})
+
+            return df.to_json(date_format='iso', orient='split'), f"✅ Arquivo {filename} carregado com sucesso!"
+
+        else:
+            return None, f"⚠️ Erro ao processar o arquivo: {df}"
+
+    return None, ''
+
     
 if __name__ == '__main__':  # Só executa quando rodar o script diretamente
     app.run(debug=True)  # Roda o servidor do Dash em modo debug para desenvolvimento

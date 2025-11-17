@@ -1,4 +1,5 @@
 import base64
+from dash import html
 import pandas as pd
 from matdata.converter import csv2df, parquet2df, read_zip#, load_from_tsfile, xes2df
 from matdata.converter import xes2df
@@ -17,7 +18,7 @@ def parse_contents(contents, filename, date):
 
             df = pd.DataFrame()
             if ext == 'parquet':
-                decoded = io.StringIO(decoded.decode('utf-8'))
+                decoded = io.BytesIO(decoded)  # mantém binário
                 df = parquet2df(decoded, missing='?')
             elif ext == 'csv':
 #                from matdata.converter import csv2df
@@ -51,7 +52,7 @@ def parse_contents(contents, filename, date):
                 return df
                 
     except Exception as e:
-        print(e)
+        return html.Div([f"Erro ao processar o arquivo: {str(e)}"])
 
     return None
 
