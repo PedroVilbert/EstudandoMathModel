@@ -1,7 +1,9 @@
+from io import StringIO
 import dash  # Importa a biblioteca Dash para criação da aplicação web interativa
 import plotly.graph_objects as go  # Importa plotly.graph_objects para gráficos customizados
 from dash import Dash, dcc, html, Input, Output, State  # Importa componentes do Dash para construir layout e callbacks
 import os
+from dash import dcc
 
 #bibliotecas mat
 from matdata.dataset import *  # Importa funções para carregar datasets do pacote matdata
@@ -13,7 +15,7 @@ import funcoesAuxiliares as fca #Funções auxiliares para o mapa
 import uploadArquivo as upa #Funções para o upload de arquivos
 import movelets as mov #Movelets
 
-os.system('cls')
+# os.system('cls')
 # import inspect
 # print(inspect.getsource(df2trajectory))
 
@@ -30,7 +32,7 @@ app = Dash(__name__, external_stylesheets=external_stylesheets)  # Instancia apl
 # Layout
 app.layout = html.Div([  # Define layout principal como uma Div
     
-    dcc.Checklist(  # Checklist para seleção das colunas a mostrar no tooltip
+    dcc.Dropdown(  # Checklist para seleção das colunas a mostrar no tooltip
         id='filtros-hover',  # Id do componente para callbacks
         options=[  # Opções que aparecem como checkboxes
             {'label': 'Latitute', 'value': 'lat'},  # Latitude
@@ -45,7 +47,9 @@ app.layout = html.Div([  # Define layout principal como uma Div
             {'label': 'Ponto', 'value': 'Ponto'},  # Número sequencial do ponto
         ],
         value=['Avaliacao', 'Clima'],  # Opções pré-selecionadas no checklist
-        inline=True,  # Mostra as opções em linha
+        multi=True, # permite multiplas opções
+        closeOnSelect=False,
+        searchable=True
     ),
     html.Button('Remover Todas', id='remover-button', n_clicks=0),  # Botão para desmarcar todas opções (inicia clicado)
     html.Button('Preencher Todas', id='preencher-todos-button', n_clicks=0),  # Botão para marcar todas opções
@@ -77,8 +81,8 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
     
     # Se houver novos dados carregados, converte de volta para DataFrame e trajetórias
     if json_data is not None:
-        df = pd.read_json(json_data, orient='split')
-        df = pd.read_json(json_data, orient='split')
+        df = pd.read_json(StringIO(json_data), orient='split')
+        df = pd.read_json(StringIO(json_data), orient='split')
 
         T, data_desc = df2trajectory(
             df,
@@ -99,7 +103,7 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
         all_lats.extend(lats)  # Adiciona latitudes à lista geral
         all_lons.extend(lons)  # Adiciona longitudes à lista geral
 
-
+        # Ainda não sei se esta funcionando corretamente...
         # Verifica se a trajetória possui algum movelet
         tem_movelet = traj.tid in mov.traj_movelets.keys()
 
