@@ -13,7 +13,7 @@ from matdata.dataset import load_ds
 #outros arquivos 
 import funcoesAuxiliares as fca #Funções auxiliares para o mapa
 import uploadArquivo as upa #Funções para o upload de arquivos
-import movelets as mov #Movelets
+# import movelets as mov #Movelets
 
 # os.system('cls')
 # import inspect
@@ -34,19 +34,8 @@ app.layout = html.Div([  # Define layout principal como uma Div
     
     dcc.Dropdown(  # Checklist para seleção das colunas a mostrar no tooltip
         id='filtros-hover',  # Id do componente para callbacks
-        options=[  # Opções que aparecem como checkboxes
-            {'label': 'Latitute', 'value': 'lat'},  # Latitude
-            {'label': 'Longitude','value': 'lon'},  # Longitude
-            {'label': 'Nome Local', 'value': 'Nome Local'},  # Nome do local
-            {'label': 'Classificação', 'value': 'Classificacao'},  # Classificação do local
-            {'label': 'Horário', 'value': 'Horario'},  # Horário do check-in
-            {'label': 'Clima', 'value': 'Clima'},  # Clima no check-in
-            {'label': 'Avaliação', 'value': 'Avaliacao'},  # Avaliação do local
-            {'label': 'Tipo', 'value': 'Tipo'},  # Tipo do local
-            {'label': 'Dia', 'value': 'Dia'},  # Dia do check-in
-            {'label': 'Ponto', 'value': 'Ponto'},  # Número sequencial do ponto
-        ],
-        value=['Avaliacao', 'Clima'],  # Opções pré-selecionadas no checklist
+        options=[],
+        value=[],  # Opções pré-selecionadas no checklist
         multi=True, # permite multiplas opções
         closeOnSelect=False,
         searchable=True
@@ -76,12 +65,19 @@ app.layout = html.Div([  # Define layout principal como uma Div
     Input('store-data', 'data')  # Novo input
 )
 def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa com base nas colunas selecionadas
+
+    global T, data_desc  # Permite substituir as trajetórias globais
     
-    global T  # Permite substituir as trajetórias globais
+    #TESTE ---------------------------
+    print("ATRIBUTOS DO DATA_DESC:")
+    print(data_desc.attributes)
+
+    # Garante que sempre será uma lista
+    if not colunas_selecionadas:
+        colunas_selecionadas = []
     
     # Se houver novos dados carregados, converte de volta para DataFrame e trajetórias
     if json_data is not None:
-        df = pd.read_json(StringIO(json_data), orient='split')
         df = pd.read_json(StringIO(json_data), orient='split')
 
         T, data_desc = df2trajectory(
@@ -98,29 +94,45 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
     all_lons = []  # Lista para armazenar todas longitudes
 
     for i, traj in enumerate(T[:5]):  # Testando traj. desse intervalo para encontrar movelets
+        
         lats = [p.aspects[0].x for p in traj.points]  # Lista de latitudes da trajetória i
         lons = [p.aspects[0].y for p in traj.points]  # Lista de longitudes da trajetória i
+        
         all_lats.extend(lats)  # Adiciona latitudes à lista geral
         all_lons.extend(lons)  # Adiciona longitudes à lista geral
 
         # Ainda não sei se esta funcionando corretamente...
         # Verifica se a trajetória possui algum movelet
-        tem_movelet = traj.tid in mov.traj_movelets.keys()
+        # if hasattr(mov, "traj_movelets"):
+        #     tem_movelet = traj.tid in mov.traj_movelets
+        # else:
+        #     tem_movelet = False
 
         # Cor normal da trajetória (não muda mais)
         cor_traj = cores[i % len(cores)]
 
         hover_texts = []  # Lista que conterá o texto do tooltip para cada ponto
+        
         for j, p in enumerate(traj.points):  # Para cada ponto na trajetória
-            titulo = f"{p.aspects[3].value}"  # Nome do local (aspecto 3)
-            partes = [f"{c}: {fca.extrair_valor(c, p)}" for c in colunas_selecionadas]  # Monta linhas com colunas selecionadas
+            
+            # Nome do local (aspecto 3)
+            try:
+                titulo = f"{p.aspects[3].value}"
+            except:
+                titulo = "Local"
 
-            # Se a trajetória tem movelet, deixa todo o texto em negrito
-            if tem_movelet:
-                texto = "<b>" + "<br>".join([titulo] + partes + ["🚩 MOVELET"]) + "</b>"
-                print("🚩 MOVELET")
-            else:
-                texto = "<br>".join([titulo] + partes)
+            # Monta linhas com colunas selecionadas
+            partes = [
+                f"{c}: {fca.extrair_valor(c, p, data_desc)}"
+                for c in colunas_selecionadas
+            ]
+
+            # # Se a trajetória tem movelet, deixa todo o texto em negrito
+            # if tem_movelet:
+            #     texto = "<b>" + "<br>".join([titulo] + partes + ["🚩 MOVELET"]) + "</b>"
+            #     print("🚩 MOVELET")
+            # else:
+            texto = "<br>".join([titulo] + partes)
 
             hover_texts.append(texto)
 
@@ -167,23 +179,6 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
 
     return fig
 
-# CALLBACK 2 – Atualiza checklist
-@app.callback(
-    Output('filtros-hover', 'value'),  # Saída atualiza valores selecionados no checklist
-    [Input('remover-button', 'n_clicks'), Input('preencher-todos-button', 'n_clicks')]  # Entradas: cliques nos botões
-)
-def atualizar_checklist(n_clicks1, n_clicks2):  # Função que atualiza checklist com base no botão clicado
-    ctx = dash.callback_context  # Contexto do callback para saber qual input disparou
-    if ctx.triggered:  # Se algum input disparou callback
-        botao = ctx.triggered[0]['prop_id'].split('.')[0]  # Captura id do botão disparador
-        if botao == 'remover-button':  # Se botão "Remover Todas" foi clicado
-            return []  # Retorna lista vazia para desmarcar todas as opções
-        elif botao == 'preencher-todos-button':  # Se botão "Preencher Todas" foi clicado
-            return ['lat', 'lon', 'Nome Local', 'Classificacao', 'Horario', 'Clima', 'Avaliacao', 'Tipo', 'Dia', 'Ponto']  # Retorna lista completa para marcar todas as opções
-    raise dash.exceptions.PreventUpdate  # Se nenhum botão válido disparou, não atualiza nada
-
-
-
 @app.callback(
     Output('store-data', 'data'),  # Salva o DataFrame no Store
     Output('upload-output', 'children'),  # Mostra mensagem
@@ -193,18 +188,35 @@ def atualizar_checklist(n_clicks1, n_clicks2):  # Função que atualiza checklis
     prevent_initial_call=True
 )
 def process_uploaded_file(contents, filename, date):
+
     if contents is not None:
+
         df = upa.parse_contents(contents, filename, date)
 
         if isinstance(df, pd.DataFrame):
 
             #CONVERSÕES AQUI DENTRO!!!
-            # Converte colunas com caracteres estranhos
-            df['day'] = df['day'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s]', '', regex=True).str.strip()
-            df['poi'] = df['poi'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True).str.strip()
-            df['type'] = df['type'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True).str.strip()
-            df['root_type'] = df['root_type'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True).str.strip()
-            df['weather'] = df['weather'].astype(str).str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s]', '', regex=True).str.strip()
+
+            # Padroniza nomes das colunas
+            df.columns = df.columns.str.strip().str.lower()
+
+            print("Colunas recebidas:", df.columns.tolist())
+
+            # Converte colunas de texto automaticamente (sistema genérico)
+            for col in df.select_dtypes(include=['object']).columns:
+                df[col] = (
+                    df[col]
+                    .astype(str)
+                    .str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True)
+                    .str.strip()
+                )
+
+            # Tenta converter colunas numéricas automaticamente
+            for col in df.columns:
+                try:
+                    df[col] = pd.to_numeric(df[col])
+                except:
+                    pass
 
             # Normaliza linhas vazias
             df = df.replace({"": None, "nan": None})
@@ -216,6 +228,50 @@ def process_uploaded_file(contents, filename, date):
 
     return None, ''
 
+
+#callback 3 – Atualiza opções do dropdown com base no DataFrame carregado
+@app.callback(
+    Output('filtros-hover', 'options'), # Atualiza opções do dropdown com base no DataFrame carregado
+    Output('filtros-hover', 'value'), # Atualiza valores selecionados no dropdown
+    Input('store-data', 'data'), # Novo input para o JSON do DataFrame carregado
+    Input('remover-button', 'n_clicks'), # Novo input para o botão de controle
+    Input('preencher-todos-button', 'n_clicks'), # Novos inputs para os botões de controle
+)
+def controlar_dropdown(json_data, n_remover, n_preencher): # Função para controlar opções do dropdown com base no upload e botões de controle
+
+    ctx = dash.callback_context # Contexto do callback para identificar qual input disparou a função
+
+    # Se não houve trigger ainda (primeira execução)
+    if not ctx.triggered: # Se nenhum input disparou o callback, usa colunas do dataset inicial para preencher opções do dropdown
+        # Usa o dataset inicial carregado no começo do script
+        colunas = [col for col in df.columns if col not in ['tid', 'label']] # Exclui colunas de identificação e rótulo
+        options = [{'label': col, 'value': col} for col in colunas] # Cria opções para o dropdown com base nas colunas do dataset inicial
+        return options, colunas # Seleciona todas as colunas do dataset inicial por padrão
+
+    trigger = ctx.triggered[0]['prop_id'].split('.')[0] # Identifica qual input disparou o callback
+
+    # Se veio do upload
+    if trigger == 'store-data' and json_data is not None: # Se o trigger foi o upload e tem dados, atualiza opções com as colunas do dataset carregado
+        df_upload = pd.read_json(StringIO(json_data), orient='split') # Converte JSON de volta para DataFrame
+        colunas = [col for col in df_upload.columns if col not in ['tid', 'label']] # Exclui colunas de identificação e rótulo
+        options = [{'label': col, 'value': col} for col in colunas] # Cria opções para o dropdown com base nas colunas do DataFrame carregado
+        return options, colunas # Seleciona todas as colunas do upload por padrão
+
+    # Remover
+    if trigger == 'remover-button': # Se o botão "Remover Todas" foi clicado, desmarca todas as colunas
+        return dash.no_update, [] # Retorna opções atuais mas desmarca todas as colunas
+
+    # Preencher
+    if trigger == 'preencher-todos-button': # Se o botão "Preencher Todas" foi clicado, seleciona todas as colunas disponíveis
+        if json_data is not None: # Se tiver upload, usa colunas do dataset carregado
+            df_upload = pd.read_json(StringIO(json_data), orient='split') # Se tiver upload, usa colunas do dataset carregado
+            colunas = [col for col in df_upload.columns if col not in ['tid', 'label']] # Se tiver upload, usa colunas do dataset carregado
+        else: # Se não tiver upload, usa colunas do dataset inicial
+            colunas = [col for col in df.columns if col not in ['tid', 'label']] # Se não tiver upload, usa colunas do dataset inicial
+
+        return dash.no_update, colunas # Retorna opções atuais mas seleciona todas as colunas
+
+    raise dash.exceptions.PreventUpdate # Se nenhum trigger válido, não atualiza nada
     
 if __name__ == '__main__':  # Só executa quando rodar o script diretamente
     app.run(debug=True)  # Roda o servidor do Dash em modo debug para desenvolvimento

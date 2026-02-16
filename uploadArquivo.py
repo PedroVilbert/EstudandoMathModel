@@ -18,8 +18,8 @@ def parse_contents(contents, filename, date):
 
             df = pd.DataFrame()
             if ext == 'parquet':
-                decoded = io.BytesIO(decoded)  # mantém binário
-                df = parquet2df(decoded, missing='?')
+                # Usa pandas diretamente (mais seguro para upload)
+                df = pd.read_parquet(io.BytesIO(decoded))
             elif ext == 'csv':
 #                from matdata.converter import csv2df
                 decoded = io.StringIO(decoded.decode('utf-8'))

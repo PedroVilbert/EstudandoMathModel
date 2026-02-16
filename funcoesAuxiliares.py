@@ -33,26 +33,46 @@ def icones_clima(clima):  # Função para converter string clima em emoji corres
     return clima_icones.get(clima, '-')  # Retorna emoji ou '-' se não encontrado
 
 
-def extrair_valor(coluna, p):  # Função que retorna o valor de uma coluna para um ponto p da trajetória
+def extrair_valor(coluna, p, data_desc):  # Função que retorna o valor de uma coluna para um ponto p da trajetória
     
-    #Cria a versão numérica da avaliação indo de 0 até 5
-    if p.aspects[6].value > 0:  # Se valor da avaliação for maior que zero
-        num_avaliacao = str(p.aspects[6].value / 2)  # Divide por 2 e converte para string
-    else: 
-        num_avaliacao = "-"  # Caso contrário, retorna '-'
+    # Latitude (coordenada x)
+    if coluna == "lat":
+        return p.aspects[0].x  
     
-    # Dicionário que associa coluna ao valor extraído do ponto p
-    idx = {
-        "lat": lambda p: p.aspects[0].x,  # Latitude (coordenada x)
-        "lon": lambda p: p.aspects[0].y,  # Longitude (coordenada y)
-        "Nome Local": lambda p: str(p.aspects[3]),  # Nome do local (aspecto 3)
-        "Classificacao": lambda p: str(p.aspects[5]),  # Classificação do local (aspecto 5)
-        "Horario": lambda p: str(p.aspects[1]),  # Horário do check-in (aspecto 1)
-        "Clima": lambda p: icones_clima(p.aspects[7].value),  # Clima formatado (aspecto 7)
-        "Avaliacao": lambda p: icone_avaliacao(p.aspects[6].value) + "\t(" + num_avaliacao + ")",  # Avaliação com estrelas + número
-        "Tipo": lambda p: str(p.aspects[4]),  # Tipo do local (aspecto 4)
-        "Dia": lambda p: str(p.aspects[2]),  # Dia do check-in (aspecto 2)
-        "Ponto": lambda p: p.seq  # Número sequencial do ponto
-    }
-    return idx[coluna](p) if coluna in idx else ''  # Retorna valor da coluna ou string vazia se coluna não existir
+    # Longitude (coordenada y)
+    if coluna == "lon":
+        return p.aspects[0].y  
+
+    # Número sequencial do ponto
+    if coluna == "Ponto":
+        return p.seq  
+
+    # Agora buscamos pelo nome correto do atributo
+    atributos = [attr.name for attr in data_desc.attributes]
+
+    try:
+        idx = atributos.index(coluna)
+    except ValueError:
+        return ''
+
+    aspecto = p.aspects[idx]
+
+    # Alguns aspects possuem atributo .value
+    valor = aspecto.value if hasattr(aspecto, "value") else aspecto  
+
+    # Cria a versão numérica da avaliação indo de 0 até 5
+    if coluna == "rating":
+        if valor and valor > 0:
+            num_avaliacao = str(valor / 2)
+        else:
+            num_avaliacao = "-"
+        return icone_avaliacao(valor) + "\t(" + num_avaliacao + ")"
+
+    # Clima formatado com emoji correspondente
+    if coluna == "weather":
+        return icones_clima(valor)
+
+    return valor
+
+
 
