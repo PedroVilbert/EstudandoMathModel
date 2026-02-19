@@ -47,7 +47,7 @@ def extrair_valor(coluna, p, data_desc):  # Função que retorna o valor de uma 
     if coluna == "Ponto":
         return p.seq  
 
-    # Agora buscamos pelo nome correto do atributo
+    # Lista de atributos do dataset para encontrar o índice da coluna desejada
     atributos = [attr.name for attr in data_desc.attributes]
 
     try:

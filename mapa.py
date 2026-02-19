@@ -4,6 +4,7 @@ import plotly.graph_objects as go  # Importa plotly.graph_objects para gráficos
 from dash import Dash, dcc, html, Input, Output, State  # Importa componentes do Dash para construir layout e callbacks
 import os
 from dash import dcc
+import re
 
 #bibliotecas mat
 from matdata.dataset import *  # Importa funções para carregar datasets do pacote matdata
@@ -66,38 +67,103 @@ app.layout = html.Div([  # Define layout principal como uma Div
 )
 def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa com base nas colunas selecionadas
 
-    global T, data_desc  # Permite substituir as trajetórias globais
     
-    #TESTE ---------------------------
-    print("ATRIBUTOS DO DATA_DESC:")
-    print(data_desc.attributes)
-
-    # Garante que sempre será uma lista
     if not colunas_selecionadas:
         colunas_selecionadas = []
-    
-    # Se houver novos dados carregados, converte de volta para DataFrame e trajetórias
-    if json_data is not None:
-        df = pd.read_json(StringIO(json_data), orient='split')
 
-        T, data_desc = df2trajectory(
-            df,
-            data_desc=None,               # evita leitura de arquivo
-            tid_col='tid',                # ajuste para o nome da sua coluna
-            label_col='label'             # ajuste para sua coluna
+    # 🔹 Se houve upload
+    if json_data is not None:
+
+        df_base = pd.read_json(StringIO(json_data), orient='split')
+        print("Colunas recebidas:", df_base.columns.tolist())
+
+        print("Linhas logo após read_json:", len(df_base))
+
+        print("Valores únicos da coluna space:")
+        print(df_base["space"].head())
+
+        print("Quantidade de NaN em space:", df_base["space"].isna().sum())
+        # =====================================================
+        # 🔥 COLOQUE O BLOCO AQUI
+        # =====================================================
+
+        # CASO 1 — já tem lat/lon
+        if "lat" in df_base.columns and "lon" in df_base.columns:
+
+            df_base["lat"] = pd.to_numeric(df_base["lat"], errors="coerce")
+            df_base["lon"] = pd.to_numeric(df_base["lon"], errors="coerce")
+            df_base = df_base.dropna(subset=["lat", "lon"])
+            df_base["space"] = (
+                df_base["lat"].astype(str) + " " +
+                df_base["lon"].astype(str)
+            )
+
+        # CASO 2 — tem coluna space
+        elif "space" in df_base.columns:
+
+            df_base = df_base.dropna(subset=["space"])
+            df_base["space"] = df_base["space"].astype(str)
+
+            # 🔥 extrai todos os números (inclusive negativos e decimais)
+            coords = df_base["space"].str.extract(r'(-?\d+\.?\d*)[^0-9\-]+(-?\d+\.?\d*)')
+
+            if coords.isna().any().any():
+                print("Falha ao extrair coordenadas")
+                return go.Figure()
+
+            df_base["lon"] = pd.to_numeric(coords[0], errors="coerce")
+            df_base["lat"] = pd.to_numeric(coords[1], errors="coerce")
+
+            df_base = df_base.dropna(subset=["lat", "lon"])
+
+            print("Linhas após tratamento:", len(df_base))
+
+        else:
+            return go.Figure()
+
+        # =====================================================
+        # 🔥 AGORA gera a trajetória com df_base tratado
+        # =====================================================
+
+        T_local, data_desc_local = df2trajectory(
+            df_base,
+            data_desc=None,
+            tid_col='tid',
+            label_col='label'
         )
-    
-    fig = go.Figure()  # Cria uma nova figura plotly
+
+    else:
+        # sem upload → usa dataset original
+        T_local = T
+        data_desc_local = data_desc
+        
+    fig = go.Figure() # Cria uma nova figura plotly
     cores = ['blue', 'green', 'orange', 'purple', 'brown']  # Lista de cores para trajetórias
 
     all_lats = []  # Lista para armazenar todas latitudes dos pontos para centralizar mapa
     all_lons = []  # Lista para armazenar todas longitudes
+    
+    print("Quantidade de trajetórias:", len(T_local))
+    
+    
+    for i, traj in enumerate(T_local[:5]):  # Testando traj. desse intervalo para encontrar movelets
+        
+        if not traj.points:
+            continue
 
-    for i, traj in enumerate(T[:5]):  # Testando traj. desse intervalo para encontrar movelets
-        
-        lats = [p.aspects[0].x for p in traj.points]  # Lista de latitudes da trajetória i
-        lons = [p.aspects[0].y for p in traj.points]  # Lista de longitudes da trajetória i
-        
+        # Descobre qual índice é o aspecto espacial
+        space_index = None
+        for idx, asp in enumerate(traj.points[0].aspects):
+            if hasattr(asp, "x") and hasattr(asp, "y"):
+                space_index = idx
+                break
+
+        if space_index is None:
+            continue  # não encontrou aspecto espacial
+
+        lats = [p.aspects[space_index].x for p in traj.points]
+        lons = [p.aspects[space_index].y for p in traj.points]
+            
         all_lats.extend(lats)  # Adiciona latitudes à lista geral
         all_lons.extend(lons)  # Adiciona longitudes à lista geral
 
@@ -123,7 +189,7 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
 
             # Monta linhas com colunas selecionadas
             partes = [
-                f"{c}: {fca.extrair_valor(c, p, data_desc)}"
+                f"{c}: {fca.extrair_valor(c, p, data_desc_local)}"
                 for c in colunas_selecionadas
             ]
 
@@ -160,6 +226,8 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
             showlegend=False
         ))
 
+    print("Total latitudes coletadas:", len(all_lats))
+    
     # Centraliza o mapa
     if all_lats and all_lons:
         center_lat = sum(all_lats) / len(all_lats)
@@ -177,6 +245,7 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
         showlegend=True
     )
 
+    
     return fig
 
 @app.callback(
@@ -195,21 +264,17 @@ def process_uploaded_file(contents, filename, date):
 
         if isinstance(df, pd.DataFrame):
 
-            #CONVERSÕES AQUI DENTRO!!!
-
             # Padroniza nomes das colunas
             df.columns = df.columns.str.strip().str.lower()
 
             print("Colunas recebidas:", df.columns.tolist())
 
-            # Converte colunas de texto automaticamente (sistema genérico)
+            # Converte colunas de texto automaticamente
             for col in df.select_dtypes(include=['object']).columns:
-                df[col] = (
-                    df[col]
-                    .astype(str)
-                    .str.replace(r'[^a-zA-ZÀ-ÖØ-öø-ÿ\s&]', '', regex=True)
-                    .str.strip()
-                )
+                if col == "space":
+                    continue  # NÃO mexe na coluna space
+                
+                df[col] = df[col].astype(str).str.strip()
 
             # Tenta converter colunas numéricas automaticamente
             for col in df.columns:
