@@ -71,7 +71,7 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
     if not colunas_selecionadas:
         colunas_selecionadas = []
 
-    # 🔹 Se houve upload
+    # Se houve upload
     if json_data is not None:
 
         df_base = pd.read_json(StringIO(json_data), orient='split')
@@ -83,9 +83,7 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
         print(df_base["space"].head())
 
         print("Quantidade de NaN em space:", df_base["space"].isna().sum())
-        # =====================================================
-        # 🔥 COLOQUE O BLOCO AQUI
-        # =====================================================
+
 
         # CASO 1 — já tem lat/lon
         if "lat" in df_base.columns and "lon" in df_base.columns:
@@ -104,7 +102,7 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
             df_base = df_base.dropna(subset=["space"])
             df_base["space"] = df_base["space"].astype(str)
 
-            # 🔥 extrai todos os números (inclusive negativos e decimais)
+            # extrai todos os números (inclusive negativos e decimais)
             coords = df_base["space"].str.extract(r'(-?\d+\.?\d*)[^0-9\-]+(-?\d+\.?\d*)')
 
             if coords.isna().any().any():
@@ -121,9 +119,6 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
         else:
             return go.Figure()
 
-        # =====================================================
-        # 🔥 AGORA gera a trajetória com df_base tratado
-        # =====================================================
 
         T_local, data_desc_local = df2trajectory(
             df_base,
