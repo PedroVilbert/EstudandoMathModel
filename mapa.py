@@ -52,6 +52,35 @@ app.layout = html.Div([  # Define layout principal como uma Div
     html.Div(id='upload-output'),  # Aqui aparecerá o resultado (mensagem de sucesso/erro)
     dcc.Store(id='store-data', storage_type='memory'),
 
+    html.Div([
+        
+        html.Label("Intervalo de trajetórias:"),
+
+        html.Div([
+            dcc.Input(
+                id="inicio-input",
+                type="number",
+                min=0,
+                step=1,
+                value=0,
+                style={"width": "100px"}
+            ),
+            html.Span(" até "),
+            dcc.Input(
+                id="fim-input",
+                type="number",
+                min=0,
+                step=1,
+                value=10,
+                style={"width": "100px"}
+            ),
+        ], style={"marginBottom": "5px"}),
+
+        # >>> NOVO
+        html.Div(id="info-limites-traj")
+
+    ]),
+
  
     dcc.Graph(id='mapa', style={'height': '700px'}, config={'scrollZoom': True}), # Componente gráfico para mostrar o mapa
 ])
@@ -63,9 +92,11 @@ app.layout = html.Div([  # Define layout principal como uma Div
 @app.callback(
     Output('mapa', 'figure'),
     Input('filtros-hover', 'value'),
-    Input('store-data', 'data')  # Novo input
+    Input('store-data', 'data'),  # Novo input
+    Input('inicio-input', 'value'),   # >>> ALTERADO
+    Input('fim-input', 'value')       # >>> ALTERADO
 )
-def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa com base nas colunas selecionadas
+def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que atualiza o mapa com base nas colunas selecionadas
 
     
     if not colunas_selecionadas:
@@ -75,6 +106,8 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
     if json_data is not None:
 
         df_base = pd.read_json(StringIO(json_data), orient='split')
+        
+        # DEBUGZIN
         print("Colunas recebidas:", df_base.columns.tolist())
 
         print("Linhas logo após read_json:", len(df_base))
@@ -99,19 +132,21 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
         # CASO 2 — tem coluna space
         elif "space" in df_base.columns:
 
-            df_base = df_base.dropna(subset=["space"])
-            df_base["space"] = df_base["space"].astype(str)
+            df_base = df_base.dropna(subset=["space"]) # Remove linhas onde "space" é NaN, pois não tem como extrair coordenadas
+            df_base["space"] = df_base["space"].astype(str) # Garante que "space" é string para aplicar regex
 
             # extrai todos os números (inclusive negativos e decimais)
             coords = df_base["space"].str.extract(r'(-?\d+\.?\d*)[^0-9\-]+(-?\d+\.?\d*)')
 
-            if coords.isna().any().any():
-                print("Falha ao extrair coordenadas")
-                return go.Figure()
+            if coords.isna().any().any(): # Se alguma linha não conseguiu extrair coordenadas, mostra aviso e retorna mapa vazio
+                print("Falha ao extrair coordenadas") # DEBUG
+                return go.Figure() # Retorna figura vazia
 
+            # Converte para numérico, forçando erros a NaN, e depois remove linhas com NaN
             df_base["lon"] = pd.to_numeric(coords[0], errors="coerce")
             df_base["lat"] = pd.to_numeric(coords[1], errors="coerce")
 
+            # Remove linhas onde não conseguiu extrair coordenadas válidas
             df_base = df_base.dropna(subset=["lat", "lon"])
 
             print("Linhas após tratamento:", len(df_base))
@@ -141,7 +176,10 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
     print("Quantidade de trajetórias:", len(T_local))
     
     
-    for i, traj in enumerate(T_local[:5]):  # Testando traj. desse intervalo para encontrar movelets
+
+
+    for i in range(inicio, fim):
+        traj = T_local[i]
         
         if not traj.points:
             continue
@@ -232,7 +270,7 @@ def update_map(colunas_selecionadas, json_data):  # Função que atualiza o mapa
 
     fig.update_layout(
         map_style="open-street-map",
-        map_zoom=11,
+        map_zoom=5,
         map_center={"lat": center_lat, "lon": center_lon},
         margin={"r": 0, "t": 30, "l": 0, "b": 0},
         height=700,
@@ -332,7 +370,33 @@ def controlar_dropdown(json_data, n_remover, n_preencher): # Função para contr
         return dash.no_update, colunas # Retorna opções atuais mas seleciona todas as colunas
 
     raise dash.exceptions.PreventUpdate # Se nenhum trigger válido, não atualiza nada
-    
+
+# Atualiza limite máximo e texto informativo
+@app.callback(
+    Output('inicio-input', 'max'),
+    Output('fim-input', 'max'),
+    Output('info-limites-traj', 'children'),
+    Input('store-data', 'data')
+)
+def atualizar_limites_inputs(json_data):
+
+    if json_data is not None:
+        df_base = pd.read_json(StringIO(json_data), orient='split')
+        T_local, _ = df2trajectory(
+            df_base,
+            data_desc=None,
+            tid_col='tid',
+            label_col='label'
+        )
+    else:
+        T_local = T
+
+    total = len(T_local)
+
+    texto_info = f"Total de trajetórias: {total}"
+
+    return total, total, texto_info
+
 if __name__ == '__main__':  # Só executa quando rodar o script diretamente
     app.run(debug=True)  # Roda o servidor do Dash em modo debug para desenvolvimento
     
