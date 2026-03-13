@@ -93,8 +93,8 @@ app.layout = html.Div([  # Define layout principal como uma Div
     Output('mapa', 'figure'),
     Input('filtros-hover', 'value'),
     Input('store-data', 'data'),  # Novo input
-    Input('inicio-input', 'value'),   # >>> ALTERADO
-    Input('fim-input', 'value')       # >>> ALTERADO
+    Input('inicio-input', 'value'),
+    Input('fim-input', 'value')    
 )
 def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que atualiza o mapa com base nas colunas selecionadas
 
@@ -128,8 +128,19 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
                 df_base["lat"].astype(str) + " " +
                 df_base["lon"].astype(str)
             )
+        
+        # CASO 2 — já tem LAT/LON
+        elif "LAT" in df_base.columns and "LON" in df_base.columns:
 
-        # CASO 2 — tem coluna space
+            df_base["LAT"] = pd.to_numeric(df_base["LAT"], errors="coerce")
+            df_base["LON"] = pd.to_numeric(df_base["LON"], errors="coerce")
+            df_base = df_base.dropna(subset=["LAT", "LON"])
+            df_base["space"] = (
+                df_base["LAT"].astype(str) + " " +
+                df_base["LON"].astype(str)
+            )
+
+        # CASO 3 — tem coluna space
         elif "space" in df_base.columns:
 
             df_base = df_base.dropna(subset=["space"]) # Remove linhas onde "space" é NaN, pois não tem como extrair coordenadas
@@ -163,7 +174,7 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
         )
 
     else:
-        # sem upload → usa dataset original
+        # sem upload -> usa dataset original
         T_local = T
         data_desc_local = data_desc
         
@@ -175,8 +186,6 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
     
     print("Quantidade de trajetórias:", len(T_local))
     
-    
-
 
     for i in range(inicio, fim):
         traj = T_local[i]
@@ -278,7 +287,6 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
         showlegend=True
     )
 
-    
     return fig
 
 @app.callback(
