@@ -14,7 +14,7 @@ from matdata.dataset import load_ds
 #outros arquivos 
 import funcoesAuxiliares as fca #Funções auxiliares para o mapa
 import uploadArquivo as upa #Funções para o upload de arquivos
-# import movelets as mov #Movelets
+import mov #Módulo para carregar movelets
 
 # os.system('cls')
 # import inspect
@@ -24,6 +24,9 @@ import uploadArquivo as upa #Funções para o upload de arquivos
 ds = 'mat.FoursquareNYC'  # Define o nome do dataset a ser carregado
 df = load_ds(ds, sample_size=0.25)  # Carrega uma amostra de 25% do dataset
 T, data_desc = df2trajectory(df)  # Converte DataFrame em múltiplas trajetórias (lista T)
+
+# Carregando movelets disponíveis
+traj_movelets = mov.carregar_movelets_disponveis()  # Carrega dicionário de movelets por trajetória
 
 #-----------------------------------
 # Inicia app
@@ -209,15 +212,14 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
         all_lats.extend(lats)  # Adiciona latitudes à lista geral
         all_lons.extend(lons)  # Adiciona longitudes à lista geral
 
-        # Ainda não sei se esta funcionando corretamente...
         # Verifica se a trajetória possui algum movelet
-        # if hasattr(mov, "traj_movelets"):
-        #     tem_movelet = traj.tid in mov.traj_movelets
-        # else:
-        #     tem_movelet = False
+        tem_movelet = traj.tid in traj_movelets
 
-        # Cor normal da trajetória (não muda mais)
-        cor_traj = cores[i % len(cores)]
+        # Cor normal da trajetória (muda se tem movelet)
+        cor_traj = 'red' if tem_movelet else cores[i % len(cores)]  # Vermelho para movelets, outras cores normais
+        
+        # Espessura da linha (mais grossa se tem movelet)
+        espessura = 4 if tem_movelet else 2
 
         hover_texts = []  # Lista que conterá o texto do tooltip para cada ponto
         
@@ -235,12 +237,12 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
                 for c in colunas_selecionadas
             ]
 
-            # # Se a trajetória tem movelet, deixa todo o texto em negrito
-            # if tem_movelet:
-            #     texto = "<b>" + "<br>".join([titulo] + partes + ["🚩 MOVELET"]) + "</b>"
-            #     print("🚩 MOVELET")
-            # else:
-            texto = "<br>".join([titulo] + partes)
+            # Se a trajetória tem movelet, adiciona flag visual
+            if tem_movelet:
+                num_movelets = len(traj_movelets[traj.tid])
+                texto = "<br>".join([titulo] + partes + [f"🚩 MOVELET ({num_movelets} encontrada(s))"])
+            else:
+                texto = "<br>".join([titulo] + partes)
 
             hover_texts.append(texto)
 
@@ -249,8 +251,8 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
             mode='lines',
             lon=lons,
             lat=lats,
-            line={'width': 2, 'color': cor_traj},  # Sempre cor normal
-            name=f'Trajetória {i+1}',
+            line={'width': espessura, 'color': cor_traj},  # Cor e espessura dinâmica
+            name=f'Trajetória {i+1}' + (' 🚩' if tem_movelet else ''),  # Marca no nome da legenda
             legendgroup=f"traj{i}",
             showlegend=True
         ))
