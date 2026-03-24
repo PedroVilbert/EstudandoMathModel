@@ -79,7 +79,6 @@ app.layout = html.Div([  # Define layout principal como uma Div
             ),
         ], style={"marginBottom": "5px"}),
 
-        # >>> NOVO
         html.Div(id="info-limites-traj")
 
     ]),
@@ -212,14 +211,13 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
         all_lats.extend(lats)  # Adiciona latitudes à lista geral
         all_lons.extend(lons)  # Adiciona longitudes à lista geral
 
-        # Verifica se a trajetória possui algum movelet
-        tem_movelet = traj.tid in traj_movelets
+        # Verifica se a trajetória possui algum movelet e obtém informações
+        movelets_info = traj_movelets.get(traj.tid, [])
+        tem_movelet = len(movelets_info) > 0
 
-        # Cor normal da trajetória (muda se tem movelet)
-        cor_traj = 'red' if tem_movelet else cores[i % len(cores)]  # Vermelho para movelets, outras cores normais
-        
-        # Espessura da linha (mais grossa se tem movelet)
-        espessura = 4 if tem_movelet else 2
+        # Cor padrão da trajetória (mantém cor original, e highlight vermelho só para segmentos de movelet)
+        cor_traj = cores[i % len(cores)]
+        espessura = 2
 
         hover_texts = []  # Lista que conterá o texto do tooltip para cada ponto
         
@@ -246,25 +244,51 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
 
             hover_texts.append(texto)
 
-        # Linha da trajetória
+        # Desenha a trajetória completa como base (sinaliza no nome se há movelet)
+        label_traj = f"Trajetória {traj.tid}"
+        if tem_movelet:
+            label_traj += " 🚩"  # sinal visual de presence de movelet
+
         fig.add_trace(go.Scattermap(
             mode='lines',
             lon=lons,
             lat=lats,
-            line={'width': espessura, 'color': cor_traj},  # Cor e espessura dinâmica
-            name=f'Trajetória {i+1}' + (' 🚩' if tem_movelet else ''),  # Marca no nome da legenda
+            line={'width': espessura, 'color': cor_traj},
+            name=label_traj,
             legendgroup=f"traj{i}",
             showlegend=True
         ))
+
+        # Se houver movelets, desenha apenas o(s) trecho(s) de movelet em destaque vermelho
+        if tem_movelet:
+            for idx_mov, mov_info in enumerate(movelets_info):
+                start = int(mov_info.get('start', 0))
+                end = int(mov_info.get('end', -1))
+
+                if start < 0 or end >= len(lats) or start >= len(lats):
+                    continue
+
+                seg_lats = lats[start:end + 1]
+                seg_lons = lons[start:end + 1]
+
+                fig.add_trace(go.Scattermap(
+                    mode='lines',
+                    lon=seg_lons,
+                    lat=seg_lats,
+                    line={'width': 6, 'color': 'red'},
+                    name=f'Trajetória {traj.tid}',
+                    legendgroup=f"traj{i}",
+                    showlegend=False
+                ))
 
         # Pontos da trajetória
         fig.add_trace(go.Scattermap(
             mode='markers',
             lon=lons,
             lat=lats,
-            marker={'size': 8, 'color': cor_traj},  # Sempre cor normal
+            marker={'size': 8, 'color': cor_traj},
             name=f'Pontos T{i+1}',
-            customdata=[[text] for text in hover_texts],  # Tooltip customizado
+            customdata=[[text] for text in hover_texts],
             hovertemplate="%{customdata[0]}<extra></extra>",
             legendgroup=f"traj{i}",
             showlegend=False
