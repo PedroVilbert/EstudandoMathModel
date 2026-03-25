@@ -1,3 +1,8 @@
+"""Módulo para parsing de arquivos enviados via upload na aplicação Dash.
+
+Suporta extensões: parquet, csv, zip, ts, xes, json.
+"""
+
 import base64
 from dash import html
 import pandas as pd
@@ -8,6 +13,8 @@ import io
 from matdata.preprocess import readDataset, organizeFrame
 
 def parse_contents(contents, filename, date):
+    """Decodifica conteúdo base64 e retorna DataFrame ou componente de erro."""
+    
     content_type, content_string = contents.split(',')
 
     # DECODE DATAFRAME:

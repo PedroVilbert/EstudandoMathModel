@@ -1,3 +1,8 @@
+"""Script de inspeção de movelets.
+
+Ao executar diretamente, carrega um exemplo de movelet em JSON e imprime atributos públicos e valores.
+"""
+
 import sys
 from matmodel.util.parsers import json2movelet
 import json

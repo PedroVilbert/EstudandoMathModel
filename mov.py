@@ -1,3 +1,9 @@
+"""Módulo de utilidades para descoberta e carregamento de movelets.
+
+- executar_descoberta_movelets: processa dataset, executa jar externo e cria dicionário de movelets
+- carregar_movelets_disponveis: lê arquivos de resultados e converte em dicionário por tid
+"""
+
 import pandas as pd
 import os
 import subprocess

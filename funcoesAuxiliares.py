@@ -1,6 +1,17 @@
-# Definição de funções auxiliares
+"""Módulo de funções auxiliares para formato de exibição e extração de valores.
+
+Contém:
+- icone_avaliacao: converte pontuação numérica em sequência de estrelas
+- icones_clima: converte nome de condição meteorológica em emoji
+- extrair_valor: extrai valores de atributos de pontos de trajetórias
+"""
+
 
 def icone_avaliacao(av):  # Função para converter valor numérico de avaliação em estrelas
+    """Retorna uma string de avaliação em formato de estrelas (5) com suporte a meia estrela.
+
+    av pode ser None, 0, '-' ou strings de NaN. O valor numérico é dividido por 2 para escala 0-5.
+    """
     
     if av is None or av == 0 or av == "-" or av == "Nan" or av == "NaN": # Verifica se a avaliação é nula, zero ou "Nan"
         return "\t -"  # Retorna símbolo de ausência de avaliação
@@ -25,6 +36,7 @@ def icone_avaliacao(av):  # Função para converter valor numérico de avaliaç�
             return "\t -"
 
 def icones_clima(clima):  # Função para converter string clima em emoji correspondente
+    """Retorna emoji correspondente à condição meteorológica informada."""
     clima_icones = {
         "Clouds": "☁️",  # Nuvens
         "Clear": "☀️",   # Sol
@@ -37,6 +49,16 @@ def icones_clima(clima):  # Função para converter string clima em emoji corres
 
 
 def extrair_valor(coluna, p, data_desc):  # Função que retorna o valor de uma coluna para um ponto p da trajetória
+    """Extrai o valor de uma coluna específica para um ponto de trajetória.
+
+    Args:
+        coluna (str): Nome da coluna a extrair (ex: 'lat', 'lon', 'rating', 'weather').
+        p: Objeto ponto da trajetória.
+        data_desc: Descrição dos dados do dataset.
+
+    Returns:
+        Valor formatado da coluna para o ponto.
+    """
     
     # Latitude (coordenada x)
     if coluna == "lat":

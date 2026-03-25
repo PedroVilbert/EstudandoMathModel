@@ -1,3 +1,11 @@
+"""Aplicação Dash para visualização de trajetórias e movelets.
+
+- Carrega dataset e movelets
+- Renderiza mapa interativo com linhas e pontos
+- Destaca segmentos de movelets em vermelho
+- Suporta upload de CSV/parquet/zip/ts/json e atualização dinâmica de colunas de tooltip
+"""
+
 from io import StringIO
 import dash  # Importa a biblioteca Dash para criação da aplicação web interativa
 import plotly.graph_objects as go  # Importa plotly.graph_objects para gráficos customizados
@@ -99,7 +107,17 @@ app.layout = html.Div([  # Define layout principal como uma Div
     Input('fim-input', 'value')    
 )
 def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que atualiza o mapa com base nas colunas selecionadas
+    """Atualiza a figura do mapa com trajetórias e movelets baseados nos filtros selecionados.
 
+    Args:
+        colunas_selecionadas (list): Lista de colunas para tooltip.
+        json_data (str): Dados JSON do arquivo carregado via upload.
+        inicio (int): Índice inicial das trajetórias a exibir.
+        fim (int): Índice final das trajetórias a exibir.
+
+    Returns:
+        go.Figure: Figura Plotly com o mapa renderizado.
+    """
     
     if not colunas_selecionadas:
         colunas_selecionadas = []
@@ -324,6 +342,16 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
     prevent_initial_call=True
 )
 def process_uploaded_file(contents, filename, date):
+    """Processa arquivo carregado via upload e armazena no store.
+
+    Args:
+        contents (str): Conteúdo base64 do arquivo.
+        filename (str): Nome do arquivo.
+        date: Data de modificação.
+
+    Returns:
+        tuple: (json_data, mensagem) ou (None, erro)
+    """
 
     if contents is not None:
 
@@ -370,6 +398,16 @@ def process_uploaded_file(contents, filename, date):
     Input('preencher-todos-button', 'n_clicks'), # Novos inputs para os botões de controle
 )
 def controlar_dropdown(json_data, n_remover, n_preencher): # Função para controlar opções do dropdown com base no upload e botões de controle
+    """Controla as opções do dropdown de filtros baseado no upload e botões.
+
+    Args:
+        json_data (str): Dados JSON do arquivo carregado.
+        n_remover (int): Cliques no botão remover.
+        n_preencher (int): Cliques no botão preencher.
+
+    Returns:
+        tuple: (options, value) para o dropdown.
+    """
 
     ctx = dash.callback_context # Contexto do callback para identificar qual input disparou a função
 
@@ -413,6 +451,14 @@ def controlar_dropdown(json_data, n_remover, n_preencher): # Função para contr
     Input('store-data', 'data')
 )
 def atualizar_limites_inputs(json_data):
+    """Atualiza os limites dos inputs de intervalo e texto informativo.
+
+    Args:
+        json_data (str): Dados JSON do arquivo carregado.
+
+    Returns:
+        tuple: (max_inicio, max_fim, texto_info)
+    """
 
     if json_data is not None:
         df_base = pd.read_json(StringIO(json_data), orient='split')
