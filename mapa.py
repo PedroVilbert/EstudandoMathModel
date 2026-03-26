@@ -279,6 +279,7 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
 
         # Se houver movelets, desenha apenas o(s) trecho(s) de movelet em destaque vermelho
         if tem_movelet:
+            movelet_legend_shown = False
             for idx_mov, mov_info in enumerate(movelets_info):
                 start = int(mov_info.get('start', 0))
                 end = int(mov_info.get('end', -1))
@@ -294,10 +295,13 @@ def update_map(colunas_selecionadas, json_data, inicio, fim):  # Função que at
                     lon=seg_lons,
                     lat=seg_lats,
                     line={'width': 6, 'color': 'red'},
-                    name=f'Trajetória {traj.tid}',
-                    legendgroup=f"traj{i}",
-                    showlegend=False
+                    name=f'Movelets trajetória {traj.tid}',
+                    legendgroup=f"movelets{traj.tid}",
+                    showlegend=not movelet_legend_shown,
+                    hovertemplate=f'Movelet {idx_mov+1} da Trajetória {traj.tid}<br>Índice inicial: {start}<br>Índice final: {end}<br>Tamanho: {mov_info["size"]}<extra></extra>'
                 ))
+
+                movelet_legend_shown = True
 
         # Pontos da trajetória
         fig.add_trace(go.Scattermap(
